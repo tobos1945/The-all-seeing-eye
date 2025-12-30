@@ -8,7 +8,7 @@ Base.metadata.create_all(bind=engine)
 
 app = FastAPI(
     title="GPR Database API",
-    version="1.0.0",
+    version="0.0.1",
     description="API для управления базой данных георадарных моделей и конфигураций"
 )
 

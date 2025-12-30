@@ -2,6 +2,8 @@ from sqlalchemy import Column, Integer, String, Float, JSON, ForeignKey, Text
 from sqlalchemy.orm import relationship
 from app.database import Base
 
+# Здесь описаны таблицы базы данных.
+
 class SoilType(Base):
     __tablename__ = "soil_types"
     

@@ -4,6 +4,8 @@ from sqlalchemy.orm import sessionmaker
 from dotenv import load_dotenv
 import os
 
+# Здесь настраивается подключение к базе данных.
+
 load_dotenv()
 
 DATABASE_URL = os.getenv("DATABASE_URL")

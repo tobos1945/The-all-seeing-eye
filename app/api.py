@@ -11,6 +11,9 @@ from app.database import get_db
 app = FastAPI(title="GPR Database API", version="1.0.0")
 router = APIRouter()
 
+# Здесь собраны все API-запросы для работы с базой данных — создание, чтение, обновление и удаление записей
+
+
 # SoilType -------------------------------------------------------------------
 
 @router.post("/soil-types/", response_model=schemas.SoilTypeResponse)

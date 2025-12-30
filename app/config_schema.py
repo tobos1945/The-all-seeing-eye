@@ -2,6 +2,9 @@ from pydantic import BaseModel, Field, validator
 from typing import List, Optional, Dict, Any, Union
 from enum import Enum
 
+# В этом файле описаны правила для конфигурации моделирования георадара.
+# Как должны выглядеть слои почвы, цели, настройки антенны и результаты.
+
 class Coordinate3D(BaseModel):
     x: float
     y: float

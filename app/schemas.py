@@ -2,6 +2,9 @@ from pydantic import BaseModel, Field
 from typing import Optional, List, Dict, Any
 from datetime import datetime
 
+# В этом файле описаны форматы данных для API. 
+# Какие поля должны приходить в запросе и как они возвращаются в ответе.
+
 class SoilTypeBase(BaseModel):
     name: str
     description: Optional[str] = None

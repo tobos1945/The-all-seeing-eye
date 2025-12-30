@@ -3,6 +3,8 @@ from typing import Dict, Any
 from pathlib import Path
 from app.config_schema import ConfigFile
 
+# Этот файл проверяет конфигурационные файлы на соответствие правилам из config_schema.py.
+
 class ConfigValidator:
     @staticmethod
     def validate_config(config_data: Dict[str, Any]) -> ConfigFile:
