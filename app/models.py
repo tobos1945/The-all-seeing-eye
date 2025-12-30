@@ -18,6 +18,7 @@ class Material(Base):
     shape = Column(String)
     drawing = Column(Text)
     material_id = Column(Integer, ForeignKey("materials.id"))
+    parameters = Column(JSON, nullable=True)
 
     material = relationship("Material")
 
@@ -74,5 +75,5 @@ class ObjectPortrait(Base):
 
     target_type = relationship("TargetType")
     soil_type = relationship("SoilType")
-    antenna = relationship("Antennta")
+    antenna = relationship("Antenna")
     pulse = relationship("PulseType")

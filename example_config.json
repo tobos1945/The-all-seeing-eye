@@ -1,0 +1,63 @@
+{
+  "soil_types": [
+    {
+      "name": "Песчаная почва",
+      "description": "Сухой песок",
+      "parameters": {"плотность": 1.6, "влажность": 0.05, "ε": 3.5, "σ": 0.001}
+    },
+    {
+      "name": "Глинистая почва",
+      "description": "Влажная глина",
+      "parameters": {"плотность": 1.8, "влажность": 0.25, "ε": 12.0, "σ": 0.01}
+    }
+  ],
+  "materials": [
+    {
+      "name": "Металл (общий)",
+      "shape": "общий материал",
+      "drawing": "базовый металлический материал",
+      "parameters": {"ε": 1.0, "σ": 1e7},
+      "material_id": null
+    }
+  ],
+  "target_types": [
+    {
+      "name": "Труба металлическая",
+      "shape": "цилиндр",
+      "drawing": "труба диаметром 10см",
+      "material_id": null
+    },
+    {
+      "name": "Кабель",
+      "shape": "цилиндр",
+      "drawing": "кабель диаметром 5см",
+      "material_id": null
+    }
+  ],
+  "antennas": [
+    {
+      "name": "GSSI 400MHz",
+      "frequency": 400000000,
+      "manufacturer": "GSSI",
+      "parameters": {"тип": "диполь", "усиление": 3}
+    },
+    {
+      "name": "MALA 800MHz",
+      "frequency": 800000000,
+      "manufacturer": "MALA",
+      "parameters": {"тип": "рупор", "усиление": 5}
+    }
+  ],
+  "pulse_types": [
+    {
+      "name": "Прямоугольный импульс",
+      "waveform": "rectangular",
+      "parameters": {"длительность": 1e-9, "амплитуда": 100}
+    },
+    {
+      "name": "Гауссов импульс",
+      "waveform": "gaussian",
+      "parameters": {"ширина": 2e-9, "центр": 5e-9}
+    }
+  ]
+}
