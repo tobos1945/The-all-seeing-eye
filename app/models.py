@@ -1,6 +1,7 @@
-from sqlalchemy import Column, Integer, String, Float, JSON, ForeignKey, Text
+from sqlalchemy import Column, Integer, String, Float, JSON, ForeignKey, Text, DateTime
 from sqlalchemy.orm import relationship
 from app.database import Base
+from datetime import datetime
 
 # Здесь описаны таблицы базы данных.
 
@@ -17,7 +18,6 @@ class Material(Base):
     
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, nullable=False)
-    shape = Column(String)
     drawing = Column(Text)
     material_id = Column(Integer, ForeignKey("materials.id"))
     parameters = Column(JSON, nullable=True)
@@ -32,6 +32,7 @@ class TargetType(Base):
     shape = Column(String)
     drawing = Column(Text)
     material_id = Column(Integer, ForeignKey("materials.id"))
+    dimensions = Column(JSON, nullable=True)
     
     material = relationship("Material")
 
@@ -79,3 +80,17 @@ class ObjectPortrait(Base):
     soil_type = relationship("SoilType")
     antenna = relationship("Antenna")
     pulse = relationship("PulseType")
+
+class Script(Base):
+    __tablename__ = "scripts"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, nullable=False)
+    description = Column(Text, nullable=True)
+    config_json = Column(JSON, nullable=False)
+    script_content = Column(Text, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    status = Column(String, default="created")
+    error = Column(Text, nullable=True)
+    celery_task_id = Column(String, nullable=True)
+    result_portrait_id = Column(Integer, ForeignKey("object_portraits.id"), nullable=True)

@@ -10,7 +10,7 @@
 ## Настройка базы данных
 ### Установите и запустите PostgreSQL
 
-Если базы данных нет, создайте её через следующие команды:
+Если базы данных нет, создайте её через следующие команды (или вручную в pgAdmin 4):
 CREATE DATABASE gpr_database;
 CREATE USER gpr_user WITH PASSWORD 'your_password';
 GRANT ALL PRIVILEGES ON DATABASE gpr_database TO gpr_user;

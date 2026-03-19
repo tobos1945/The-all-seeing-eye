@@ -1,0 +1,40 @@
+{
+  "name": "plastram_test",
+  "description": "Тест антенны PlastRam на металлическом диске",
+  "domain": {
+    "size": {"x": 1.0, "y": 1.0, "z": 2.5},
+    "pml_layers": 10,
+    "background_soil_id": 1
+  },
+  "gpr_config": {
+    "antenna_id": 1,
+    "pulse_id": 1,
+    "frequency_range": [710000000, 2600000000],
+    "time_window": 3e-8,
+    "discretization": {"x": 0.005, "y": 0.005, "z": 0.005}
+  },
+  "movement": {
+    "type": "linear",
+    "start_point": {"x": 0.2, "y": 0.5, "z": 2.0},
+    "end_point": {"x": 0.8, "y": 0.5, "z": 2.0},
+    "step_size": 0.02,
+    "speed": 0.5
+  },
+  "output": {
+    "scan_types": ["B-scan"],
+    "output_format": "h5"
+  },
+  "soil_layers": [
+    {
+      "soil_type_id": 1,
+      "thickness": 0.5,
+      "position": {"x": 0.5, "y": 0.5, "z": 0.5}
+    }
+  ],
+  "targets": [
+    {
+      "target_type_id": 1,
+      "position": {"x": 0.5, "y": 0.5, "z": 0.3}
+    }
+  ]
+}

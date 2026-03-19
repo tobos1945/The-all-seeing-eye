@@ -1,0 +1,26 @@
+#title: {{ title }}
+#domain: {{ domain.x }} {{ domain.y }} {{ domain.z }}
+#dx_dy_dz: {{ dx_dy_dz.x }} {{ dx_dy_dz.y }} {{ dx_dy_dz.z }}
+#time_window: {{ time_window }}
+
+{% for mat in materials %}
+#material: {{ mat.epsilon }} {{ mat.sigma }} {{ mat.mu }} {{ mat.mag_loss }} {{ mat.name }}
+{% endfor %}
+
+#waveform: {{ waveform.type }} {{ waveform.amplitude }} {{ waveform.freq }} {{ waveform.name }}
+
+#hertzian_dipole: {{ antenna.polarization }} {{ antenna.tx_position.x }} {{ antenna.tx_position.y }} {{ antenna.tx_position.z }} {{ waveform.name }}
+#rx: {{ antenna.rx_position.x }} {{ antenna.rx_position.y }} {{ antenna.rx_position.z }}
+
+#src_steps: {{ src_steps.x }} {{ src_steps.y }} {{ src_steps.z }}
+#rx_steps: {{ rx_steps.x }} {{ rx_steps.y }} {{ rx_steps.z }}
+
+#box: 0 0 {{ soil_layer_bottom }} {{ domain.x }} {{ domain.y }} {{ soil_layer_top }} {{ soil_material_name }}
+
+{% for obj in objects %}
+{% if obj.type == "cylinder" %}
+#cylinder: {{ obj.x1 }} {{ obj.y1 }} {{ obj.z1 }} {{ obj.x2 }} {{ obj.y2 }} {{ obj.z2 }} {{ obj.radius }} {{ obj.material_name }}
+{% elif obj.type == "box" %}
+#box: {{ obj.x1 }} {{ obj.y1 }} {{ obj.z1 }} {{ obj.x2 }} {{ obj.y2 }} {{ obj.z2 }} {{ obj.material_name }}
+{% endif %}
+{% endfor %}

@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator
 from typing import List, Optional, Dict, Any, Union
 from enum import Enum
 
@@ -24,7 +24,7 @@ class TargetObject(BaseModel):
     custom_parameters: Optional[Dict[str, Any]] = None
 
 class GPRMovement(BaseModel):
-    type: str = Field("linear", regex = "^(linear|grid|custom)$")
+    type: str = Field("linear", pattern = "^(linear|grid|custom)$")
     start_point: Coordinate3D
     end_point: Optional[Coordinate3D] = None
     step_size: float = 0.1
@@ -44,10 +44,18 @@ class SimulationDomain(BaseModel):
     background_soil_id: int
 
 class OutputConfiguration(BaseModel):
-    scan_types: List[str] = Field(["A-scan"], regex = "^(A-scan|B-scan|C-scan)$")
-    output_format: str = Field("h5", regex = "^(h5|out|both)$")
+    scan_types: List[str] = Field(default=["A-scan"])  # Убрали pattern
+    output_format: str = Field(default="h5", pattern="^(h5|out|both)$")
     output_directory: Optional[str] = "./results"
     save_intermediate: bool = False
+    
+    @field_validator('scan_types')
+    def validate_scan_types(cls, v):
+        valid_types = ["A-scan", "B-scan", "C-scan"]
+        for scan_type in v:
+            if scan_type not in valid_types:
+                raise ValueError(f"Scan type must be one of {valid_types}")
+        return v
 
 class SimulationConfig(BaseModel):
     name: str
@@ -63,13 +71,13 @@ class SimulationConfig(BaseModel):
 
     custom_parameters: Optional[Dict[str, Any]] = {}
 
-    @validator('soil_layers')
+    @field_validator('soil_layers')
     def validate_soil_layers(cls, v):
         if not v:
             raise ValueError("At least one soil layer must be specified")
         return v
     
-    @validator('gpr_config')
+    @field_validator('gpr_config')
     def validate_frequency(cls, v, values):
         if v.frequency_range:
             if len(v.frequency_range) != 2:

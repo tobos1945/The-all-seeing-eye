@@ -1,6 +1,12 @@
 from fastapi import FastAPI, Depends, HTTPException, UploadFile, File, Query, Path, APIRouter
 from sqlalchemy.orm import Session, joinedload
 from typing import List, Optional
+from app.gprmax_generator import generate_script
+from app.tasks import run_gprmax_simulation
+from app.celery_app import celery_app
+import app.tasks
+from app import config_schema
+from fastapi.responses import PlainTextResponse
 import json
 import csv
 import io
@@ -969,3 +975,89 @@ def health_check(db: Session = Depends(get_db)):
     
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Health check failed: {str(e)}")
+    
+@router.post("/seed")
+def seed_db(db: Session = Depends(get_db)):
+    from app.seed import seed_database
+    seed_database(db)
+    return {"message": "Database seeded successfully"}
+
+@router.post("/generate-script/", response_model=schemas.ScriptResponse)
+def generate_script_endpoint(
+    config: config_schema.SimulationConfig,
+    db: Session = Depends(get_db)
+):
+    script_content = generate_script(config, db)
+    db_script = models.Script(
+        name=config.name,
+        description=config.description,
+        config_json=config.dict(),
+        script_content=script_content,
+        status="generated"
+    )
+    db.add(db_script)
+    db.commit()
+    db.refresh(db_script)
+    return db_script
+
+@router.get("/scripts/{script_id}", response_model=schemas.ScriptResponse)
+def get_script(script_id: int, db: Session = Depends(get_db)):
+    script = db.query(models.Script).get(script_id)
+    if not script:
+        raise HTTPException(status_code=404, detail="Script not found")
+    return script
+
+@router.get("/scripts/{script_id}/download")
+def download_script(script_id: int, db: Session = Depends(get_db)):
+    script = db.query(models.Script).get(script_id)
+    if not script:
+        raise HTTPException(status_code=404, detail="Script not found")
+    return PlainTextResponse(
+        script.script_content,
+        media_type="text/plain",
+        headers={"Content-Disposition": f"attachment; filename=script_{script_id}.in"}
+    )
+
+@router.post("/simulate/{script_id}")
+def simulate_script(script_id: int, db: Session = Depends(get_db)):
+    script = db.query(models.Script).filter(models.Script.id == script_id).first()
+    if not script:
+        raise HTTPException(status_code=404, detail="Script not found")
+    if script.status not in ["generated", "failed"]:
+        raise HTTPException(status_code=400, detail=f"Script cannot be run, status: {script.status}")
+
+    task = run_gprmax_simulation.delay(script_id)
+    
+    script.status = "pending"
+    script.celery_task_id = task.id
+    db.commit()
+
+    return {"task_id": task.id, "script_id": script_id}
+
+@router.get("/tasks/{task_id}")
+def get_task_status(task_id: str):
+    task = celery_app.AsyncResult(task_id)
+    return {
+        "task_id": task_id,
+        "status": task.status,
+        "result": task.result if task.ready() else None
+    }
+
+@router.get("/antennas/plastram/info")
+def get_plastram_info():
+    """Получить подробную информацию об антенне PlastRam"""
+    return {
+        "name": "PlastRam (1 sect)",
+        "manufacturer": "TSU / TerraZond",
+        "frequency_range": [0.71e9, 2.6e9],
+        "center_frequency": 1.1e9,
+        "impedance": 50,
+        "polarization": "z (линейная)",
+        "beamwidth": "60° по уровню 0.7",
+        "vswr": "≤ 2 в рабочем диапазоне",
+        "dimensions_approx": "7-8 см (ширина элемента)",
+        "application": "Многоканальный георадар TerraZond, 1 секция",
+        "source": "TerraZond_Sibercon_Plasram_rus.pdf",
+        "gprmax_model": "bowtie_antenna",
+        "notes": "Аппроксимация антенной bowtie в gprMax. Для точного моделирования требуется геометрия."
+    }

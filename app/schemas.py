@@ -21,7 +21,6 @@ class SoilTypeResponse(SoilTypeBase):
 
 class MaterialBase(BaseModel):
     name: str
-    shape: Optional[str] = None
     drawing: Optional[str] = None
     parameters: Dict[str, Any] = {}
     material_id: Optional[int] = None
@@ -40,6 +39,7 @@ class TargetTypeBase(BaseModel):
     shape: str
     drawing: Optional[str] = None
     material_id: Optional[int]
+    dimensions: Optional[Dict[str, Any]] = None
 
 class TargetTypeCreate(TargetTypeBase):
     pass
@@ -120,3 +120,23 @@ class BulkUpload(BaseModel):
     pulse_types: Optional[List[PulseTypeCreate]] = None
     soil_boundaries: Optional[List[SoilBoundaryCreate]] = None
     object_portraits: Optional[List[ObjectPortraitCreate]] = None
+
+class ScriptBase(BaseModel):
+    name: str
+    description: Optional[str] = None
+    config_json: Dict[str, Any]
+
+class ScriptCreate(ScriptBase):
+    pass
+
+
+class ScriptResponse(ScriptBase):
+    id: int
+    script_content: str
+    created_at: datetime
+    status: str
+    error: Optional[str] = None
+    result_portrait_id: Optional[int] = None
+
+    class Config:
+        from_attributes = True
