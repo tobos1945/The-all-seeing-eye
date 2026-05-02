@@ -1061,3 +1061,75 @@ def get_plastram_info():
         "gprmax_model": "bowtie_antenna",
         "notes": "Аппроксимация антенной bowtie в gprMax. Для точного моделирования требуется геометрия."
     }
+
+@router.get("/scripts/{script_id}/download-result")
+def download_result(script_id: int, db: Session = Depends(get_db)):
+    script = db.query(models.Script).get(script_id)
+    if not script or script.status != "completed":
+        raise HTTPException(status_code=404, detail="Результат не найден или ещё не готов")
+
+    # Ищем файл .h5 или .out в папке результатов
+    result_dir = Path(f"./results/{script_id}")
+    if not result_dir.exists():
+        raise HTTPException(status_code=404, detail="Папка с результатами не найдена")
+
+    h5_files = list(result_dir.glob("*.h5"))
+    out_files = list(result_dir.glob("*.out"))
+    if h5_files:
+        file_path = h5_files[0]
+    elif out_files:
+        file_path = out_files[0]
+    else:
+        raise HTTPException(status_code=404, detail="Файл результата отсутствует")
+
+    return FileResponse(
+        path=str(file_path),
+        media_type="application/octet-stream",
+        filename=file_path.name
+    )
+
+@router.get("/debug/db-check")
+def debug_db_check(db: Session = Depends(get_db)):
+    """Отладка: проверка подключения к БД"""
+    from sqlalchemy import text
+    
+    # Получаем имя текущей базы данных
+    db_name = db.execute(text("SELECT current_database()")).scalar()
+    
+    # Прямые запросы через SQL
+    sql_counts = {}
+    for table in ["soil_types", "materials", "target_types", "antennas", "pulse_types"]:
+        count = db.execute(text(f"SELECT COUNT(*) FROM {table}")).scalar()
+        sql_counts[table] = count
+    
+    # Запросы через SQLAlchemy ORM
+    orm_counts = {
+        "soil_types": db.query(models.SoilType).count(),
+        "materials": db.query(models.Material).count(),
+        "target_types": db.query(models.TargetType).count(),
+        "antennas": db.query(models.Antenna).count(),
+        "pulse_types": db.query(models.PulseType).count(),
+    }
+    
+    return {
+        "database": db_name,
+        "sql_counts": sql_counts,
+        "orm_counts": orm_counts,
+    }
+
+@router.get("/scripts/", response_model=List[schemas.ScriptResponse])
+def get_scripts(
+    skip: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1, le=1000),
+    status: Optional[str] = None,
+    db: Session = Depends(get_db)
+):
+    """
+    Получить список сгенерированных скриптов с пагинацией.
+    Можно отфильтровать по статусу (generated, pending, running, completed, failed).
+    """
+    query = db.query(models.Script)
+    if status:
+        query = query.filter(models.Script.status == status)
+    scripts = query.order_by(models.Script.id.desc()).offset(skip).limit(limit).all()
+    return scripts

@@ -87,13 +87,13 @@ def seed_database(db: Session):
     if not existing:
         db.add(models.Antenna(**antenna_data))
     db.commit()
-    print("✅ Антенна PlastRam добавлена")
+    print(" Антенна PlastRam добавлена")
 
     # Импульс
     pulse_data = {
         "name": "ricker_1.1GHz", 
         "waveform": "ricker", 
-        "parameters": {"center_freq": 1.1e9, "amplitude": 1.0}
+        "parameters": {"center_freq": 1.1e9, "amplitude": 10000.0}
     }
     
     existing = db.query(models.PulseType).filter_by(name=pulse_data["name"]).first()
@@ -102,4 +102,4 @@ def seed_database(db: Session):
     db.commit()
     print("Тип импульса добавлен")
     
-    print("🎉 База данных успешно заполнена!")
+    print(" База данных успешно заполнена!")

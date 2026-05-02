@@ -1,3 +1,4 @@
+# app/celery_app.py
 from celery import Celery
 import os
 
@@ -17,9 +18,8 @@ celery_app.conf.update(
     enable_utc=True,
     task_track_started=True,
     task_time_limit=3600,
-    worker_pool='solo',  # Важно для Windows
-    worker_concurrency=1,
     task_acks_late=True,
     task_reject_on_worker_lost=True,
-    broker_connection_retry_on_startup=True
+    broker_connection_retry_on_startup=True,
+    worker_prefetch_multiplier=1,
 )

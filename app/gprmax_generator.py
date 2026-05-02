@@ -1,3 +1,4 @@
+# app/gprmax_generator.py
 from jinja2 import Environment, FileSystemLoader
 from app.config_schema import SimulationConfig
 from sqlalchemy.orm import Session
@@ -9,17 +10,14 @@ TEMPLATE_DIR = os.path.join(os.path.dirname(__file__), "templates", "gprmax")
 env = Environment(loader=FileSystemLoader(TEMPLATE_DIR))
 
 def generate_script(config: SimulationConfig, db: Session) -> str:
-    """
-    Генерация скрипта gprMax на основе конфигурации и данных из БД
-    """
     soil_type = db.query(models.SoilType).get(config.soil_layers[0].soil_type_id)
     if not soil_type:
         raise ValueError(f"Soil type id {config.soil_layers[0].soil_type_id} not found")
-    
+
     antenna = db.query(models.Antenna).get(config.gpr_config.antenna_id)
     if not antenna:
         raise ValueError(f"Antenna id {config.gpr_config.antenna_id} not found")
-    
+
     pulse = db.query(models.PulseType).get(config.gpr_config.pulse_id)
     if not pulse:
         raise ValueError(f"Pulse id {config.gpr_config.pulse_id} not found")
@@ -65,26 +63,38 @@ def generate_script(config: SimulationConfig, db: Session) -> str:
             thickness = dims.get("thickness", 0.05)
             radius = diameter / 2.0
 
-            # Определяем ось цилиндра на основе углов поворота
-            # По умолчанию ось Z (диск плашмя)
-            ax, ay, az = 0, 0, 1
-            
-            # Проверяем, есть ли rotation и его атрибуты
+            ax, ay, az = 0, 0, 1  # default axis Z
             if rot:
-                if hasattr(rot, 'x') and abs(rot.x) == 90:
-                    ax, ay, az = 1, 0, 0
-                elif hasattr(rot, 'y') and abs(rot.y) == 90:
-                    ax, ay, az = 0, 1, 0
+                rx = math.radians(rot.x if hasattr(rot, 'x') else 0)
+                ry = math.radians(rot.y if hasattr(rot, 'y') else 0)
+                rz = math.radians(rot.z if hasattr(rot, 'z') else 0)
+                if abs(ry) > 0.001:
+                    ax = math.sin(ry)
+                    az = math.cos(ry)
+                if abs(rx) > 0.001:
+                    ay_old = ay
+                    az_old = az
+                    ay = ay_old * math.cos(rx) - az_old * math.sin(rx)
+                    az = ay_old * math.sin(rx) + az_old * math.cos(rx)
 
             half = thickness / 2.0
+            # Вычисляем вертикальный размер вдоль оси Z
+            vertical_half = half * abs(az)
+            # Корректировка: если нижняя грань уходит в отрицательную область, сдвигаем объект вверх
+            z_center = pos.z
+            if z_center - vertical_half < 0:
+                z_center = vertical_half  # нижняя грань станет точно на z=0
+            z1 = z_center - half * az
+            z2 = z_center + half * az
+
             obj = {
                 "type": "cylinder",
                 "x1": pos.x - half * ax,
                 "y1": pos.y - half * ay,
-                "z1": pos.z - half * az,
+                "z1": z1,
                 "x2": pos.x + half * ax,
                 "y2": pos.y + half * ay,
-                "z2": pos.z + half * az,
+                "z2": z2,
                 "radius": radius,
                 "material_name": obj_material_name
             }
@@ -95,27 +105,43 @@ def generate_script(config: SimulationConfig, db: Session) -> str:
             width = dims.get("width", 0.05)
             height = dims.get("height", 0.05)
 
-            # Упрощённый поворот вокруг Z (кратно 90°)
-            rot_z = 0
-            if rot and hasattr(rot, 'z'):
-                rot_z = rot.z % 360
-            
-            if rot_z in [90, 270]:
-                length, width = width, length
+            eff_length, eff_width, eff_height = length, width, height
+            if rot:
+                rx = abs(rot.x if hasattr(rot, 'x') else 0) % 360
+                ry = abs(rot.y if hasattr(rot, 'y') else 0) % 360
+                rz = abs(rot.z if hasattr(rot, 'z') else 0) % 360
+                if rx in [90, 270]:
+                    eff_width, eff_height = eff_height, eff_width
+                if ry in [90, 270]:
+                    eff_length, eff_height = eff_height, eff_length
+                if rz in [90, 270]:
+                    eff_length, eff_width = eff_width, eff_length
+                if rx in [45, 135, 225, 315]:
+                    eff_width = (width + height) / math.sqrt(2)
+                    eff_height = (width + height) / math.sqrt(2)
+                if ry in [45, 135, 225, 315]:
+                    eff_length = (length + height) / math.sqrt(2)
+                    eff_height = (length + height) / math.sqrt(2)
+                if rz in [45, 135, 225, 315]:
+                    eff_length = (length + width) / math.sqrt(2)
+                    eff_width = (length + width) / math.sqrt(2)
 
-            half_l, half_w, half_h = length/2, width/2, height/2
+            half_l, half_w, half_h = eff_length/2, eff_width/2, eff_height/2
+            # Корректировка Z: нижняя грань должна быть >= 0
+            z_center = pos.z
+            if z_center - half_h < 0:
+                z_center = half_h
             obj = {
                 "type": "box",
                 "x1": pos.x - half_l,
                 "y1": pos.y - half_w,
-                "z1": pos.z - half_h,
+                "z1": z_center - half_h,
                 "x2": pos.x + half_l,
                 "y2": pos.y + half_w,
-                "z2": pos.z + half_h,
+                "z2": z_center + half_h,
                 "material_name": obj_material_name
             }
             objects.append(obj)
-
         else:
             raise ValueError(f"Unsupported shape: {shape}")
 
@@ -125,23 +151,45 @@ def generate_script(config: SimulationConfig, db: Session) -> str:
     start = mov.start_point
     end = mov.end_point or start
     step = mov.step_size
-    num_steps = int(abs(end.x - start.x) / step) + 1
+    num_steps = int(abs(end.x - start.x) / step) + 1 if step > 0 else 1
 
     soil_layer = config.soil_layers[0]
     soil_layer_bottom = soil_layer.position.z - soil_layer.thickness / 2
     soil_layer_top = soil_layer.position.z + soil_layer.thickness / 2
 
-    antenna_params = antenna.parameters
-    
+    # Настройки сетки и домена
+    opt_dx = 0.005
+    discretization = {"x": opt_dx, "y": opt_dx, "z": opt_dx}
+
+    domain_z = max(2.0, soil_layer_top + 0.5)
+    domain = {"x": 1.4, "y": 0.5, "z": round(domain_z, 2)}
+
+    antenna_height = 0.2
+    antenna_y = 0.25
+    antenna_z = antenna_height
+    tx_x = start.x
+    rx_x = start.x + 0.05
+
+    # Временное окно
+    max_depth = max([abs(obj.get("z1", 0)) for obj in objects] +
+                    [abs(obj.get("z2", 0)) for obj in objects] +
+                    [abs(soil_layer_bottom)])
+    t_air = 2 * antenna_height / 0.3e9
+    t_soil = 2 * max_depth / 0.1e9
+    t_window = max(120e-9, t_air + t_soil + 30e-9)
+
+    pml_layers = 8
+
     template_vars = {
         "title": config.name,
-        "domain": config.domain.size.dict(),
-        "dx_dy_dz": config.gpr_config.discretization.dict(),
-        "time_window": config.gpr_config.time_window,
+        "domain": domain,
+        "dx_dy_dz": discretization,
+        "time_window": t_window,
+        "pml_layers": pml_layers,
         "materials": materials,
         "waveform": {
             "type": pulse.waveform,
-            "amplitude": pulse.parameters.get("amplitude", 1.0),
+            "amplitude": pulse.parameters.get("amplitude", 10000.0),
             "freq": pulse.parameters.get("center_freq", 1.1e9),
             "name": f"wave_{pulse.id}"
         },
@@ -152,24 +200,11 @@ def generate_script(config: SimulationConfig, db: Session) -> str:
         "soil_material_name": soil_material["name"],
         "soil_layer_bottom": soil_layer_bottom,
         "soil_layer_top": soil_layer_top,
+        "antenna": {
+            "tx_position": {"x": tx_x, "y": antenna_y, "z": antenna_z},
+            "rx_position": {"x": rx_x, "y": antenna_y, "z": antenna_z},
+        }
     }
-    
-    # Настройка антенны
-    if "PlastRam" in antenna.name:
-        template_vars["antenna"] = {
-            "type": "dipole",
-            "polarization": antenna_params.get("polarization", "z"),
-            "tx_position": {"x": start.x, "y": start.y, "z": start.z},
-            "rx_position": {"x": start.x + 0.05, "y": start.y, "z": start.z},
-        }
-    else:
-        template_vars["antenna"] = {
-            "type": "dipole",
-            "polarization": "z",
-            "tx_position": {"x": start.x, "y": start.y, "z": start.z},
-            "rx_position": {"x": start.x + 0.05, "y": start.y, "z": start.z},
-        }
 
-    # Выбор шаблона
     template = env.get_template("bscan_bowtie_template.in")
     return template.render(template_vars)
